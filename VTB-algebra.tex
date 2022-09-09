@@ -1,0 +1,129 @@
+\section{Using the VTB algebra} \label{VTB-algebra}
+
+Symbols are numerical grounding to real or complex vectors of quartic dimension $d = (d'')^4$ for some integer $d''$. Let us develop here the algebra to manipulate such symbols at an abstract level. Following \cite{gosmann_vector-derived_2019} and completing their developments, we consider biologically a plausible algebraic framework, each numerical grounding corresponding to some distributed  activity of a spiking neuronal assemble and each algebraic operation to some transformation of this activity.
+
+\vthierry{Creer code de verif: gerer matrice, comparer les deux calculs}
+
+We first consider the so called Vector-derived Transformation (VTB) binding operation:
+\eqline{\mathbf{z} = \mathbf{B_y} \, \mathbf{x}}
+where $\mathbf{B_y}$ is block-diagonal matrix defined as, writing $d' \deq \sqrt{d}$:
+\eqline{\mathbf{B_y} \deq 
+\left[\begin{array}{cccc}
+    \mathbf{B_y'} &    0 & \dots &   0 \\
+       0 & \mathbf{B_y'} & \dots &    0 \\
+    \vdots & \vdots & \ddots & \vdots  \\
+       0 &    0 & \dots & \mathbf{B_y'}
+    \end{array}\right]
+\mbox{ with } 
+\mathbf{B_y'}  \deq  \sqrt{d'} \,
+\left[\begin{array}{cccc}
+    y_1            & y_2            & \dots  & y_{d'}  \\
+    y_{d' + 1}     & y_{d' + 2}     & \dots  & y_{2d'} \\
+    \vdots         & \vdots         & \ddots & \vdots  \\
+    y_{d - d' + 1} & y_{d - d' + 2} & \dots  & y_d
+\end{array}\right]}
+or equivalently, for $i = 1 \cdots d$:
+\eqline{[\mathbf{z}]_i = \sqrt{d'} \, \sum_{k = 1}^{i = d'} [\mathbf{y}]_{k + d' \, ((i-1) \mbox{ mod } d')} \;
+[\mathbf{x}]_{k + d' \, ((i-1) \mbox{ div } d')}}
+with the matrix multiplication explicitized as a sum, as it can be easily verified. Here $[\mathbf{z}]_k$ stands for the k-th coordinate of the vector $\mathbf{z}$.
+
+This operation is bi-linear in $\mathbf{x}$ and $\mathbf{y}$, thus distributive with respect to addition.
+
+At the algorithmic implementation level, the calculation is performed in $O\left(d^{\frac{3}{2}}\right)$ operations, and the $\mathbf{y}_{k + \beta[i]}$ and $\mathbf{x}_{k + \alpha[i]}$ indexing can be tabulated in two fixed look-up tables $\beta[i]$ and $\alpha[i]$ avoiding any additional calculations. Furthermore, the fact that $\sqrt{d'}$ is an integer allows to limit numerical approximations in order to improve the numerical conditioning.
+
+As stated in \cite{gosmann_vector-derived_2019} and reviewed in \cite{mercier_ontology_2021} the key point is that this binding operation generates a new vector $\mathbf{z}$ almost orthogonal to $\mathbf{x}$ and $\mathbf{y}$ and this operation is neither commutative nor associative, i.e.:
+\eqline{(\mathbf{B_y} \, \mathbf{x}) \cdot \mathbf{x} \simeq 0 \mbox{ and } (\mathbf{B_y} \, \mathbf{x}) \cdot \mathbf{y} \simeq 0 \mbox{ and } (\mathbf{B_x} \, \mathbf{y}) \cdot (\mathbf{B_y} \, \mathbf{x}) \simeq 0 \mbox{ and } (\mathbf{B_{B_z \, y}} \, \mathbf{x}) \cdot ((\mathbf{B_z} \, \mathbf{B_y}) \, \mathbf{x}) \simeq 0}
+which are precious properties in order not to infer spurious derivations. These results come from the fact that these vectors pairs are not aligned but have an orientation parameterized by random vectors. More precisely, two random normalized vectors drawn from a random normal distribution of independent samples verify ${\bf x} \cdot {\bf y} \sim {\mathcal N}(0, O(1/d))$, i.e., follows a centered normal distribution of negligible variance \cite{schlegel_comparison_2020}. A step ahead, when computing $\mathbf{B_y} \, \mathbf{x}$ we apply a permutation on all indices so that the result is no more correlated with the original vectors, thus corresponding to independent values, and leading also to almost zero.
+% Beuh c'est pas très rigoureux mais bon on écrit les équations on finit par faire la même hypothèse "morale".
+
+\vthierry{Remplacer les $\sim$ par des tilde partout}
+
+A step further, in the real case, the random matrix is almost orthogonal, i.e.:
+\eqline{\mathbf{B_y^\top} \, \mathbf{B_y} \simeq \mathbf{I}}
+for the same reasons evoked just before. We thus can defined:
+\eqline{\mathbf{B_{y^\sim}} \deq \mathbf{B_y^\top} \mbox{ with } [\mathbf{y^\sim}]_i \deq [\mathbf{y}]_{\sigma(i)} \mbox{ and }  \sigma(i) \deq  1 + d' \, ((i-1) \mbox{ mod } d') + (i-1) \mbox{ div } d'}
+in words $\mathbf{B_y^\top}$ has the same structure as $\mathbf{B_y}$ except that the vector coordinates are subject to a permutation $\sigma(i)$ which is idempotent $\sigma(\sigma(i)) = i$, thus its own inverse, so that if 
+$\mathbf{z'} = \mathbf{B_{y^\sim}} \, \mathbf{x}$ we obtain:
+\eqline{[\mathbf{z'}]_i = \sqrt{d'} \, \sum_{k = 1}^{k = d'} [\mathbf{y}]_{\sigma(k + \beta(i))} \; [\mathbf{x}]_{(k + \alpha(i))}} (where $\beta(i)$ and $\alpha(i)$ are the indexing defined to calculate $\mathbf{B_{y}} \, \mathbf{x}$ explicitly) and it allows to define a left unbinding operation:
+\eqline{\mathbf{B_{y^\sim}} \, (\mathbf{B_y} \, \mathbf{x}) = \mathbf{B_y^\top} \, \mathbf{B_y} \, \mathbf{x} \simeq \mathbf{x}}
+
+\vthierry{Virer les alpha beta et mettre formule explicite ou bien les definir}
+
+The right identity vector $\mathbf{\mathbf{i}}$ such that $\mathbf{B_{\mathbf{i}}} = \mathbf{I}$, writes explicitly:
+\iftrue
+\eqline{[\mathbf{\mathbf{i}}]_i = \frac{1}{\sqrt{d'}} \, \delta_{i = \sigma(i)}}
+In other words, we get $i_B$ by ``unfolding'' the identity matrix $I_d'$ line by line, writing a $1$, then $d$ times $0$, another $1$, and so on.
+\else
+\eqline{\mathbf{\mathbf{i}} \deq \frac{1}{\sqrt{d'}} \, \left(1, \underbrace{0, \cdots 0}_{d' \mbox{\scriptsize times}}, 1, \underbrace{0, \cdots 0}_{d' \mbox{\scriptsize times}}, 1, \cdots, 1\right)^T.}
+In other words, we get $i_B$ by ``unfolding'' the identity matrix $I_d'$ line by line, i.e., the $i$-th coordinate is zero unless $i = (k - 1) \, d' + k$ for some $k, 0 < k \leq d'$, which also corresponds to $i = \sigma(i)$.
+\fi
+
+Considering the mirroring matrix $\mathbf{B_{\leftrightarrow}}$ defined as:
+\eqline{[\mathbf{B_{\leftrightarrow}}]_{ij} \deq \delta_{j = \sigma(i)}}
+(with is thus not block-diagonal as matrix of the form $\mathbf{B_y}$ are) we obtain:
+\eqline{\mathbf{B_{\leftrightarrow}} \, \mathbf{B_y} \, \mathbf{x} = \mathbf{B_x} \, \mathbf{y}
+\mbox{ while } \mathbf{B_{\leftrightarrow}} \,\mathbf{B_{\leftrightarrow}} = \mathbf{I} \mbox{ and } \mathbf{B_{\leftrightarrow}^\top} = \mathbf{B_{\leftrightarrow}}.}
+which allows to define a right unbinding operation:
+\eqline{(\mathbf{B_{x^\sim}} \, \mathbf{B_{\leftrightarrow}}) \, (\mathbf{B_y} \, \mathbf{x}) = \mathbf{B_{x^\sim}} \, \mathbf{B_x} \, \mathbf{y} \simeq \mathbf{y}}
+
+\vthierry{Expliciter $[\mathbf{z}'']_i = \mathbf{B_{\leftrightarrow}}) \, \mathbf{x}$ avec les indexes}
+
+Unfortunately $\mathbf{B_{\leftrightarrow}}$ is not a binding matrix, i.e., is not of the form $\mathbf{B_z}$ for some vector $\mathbf{z}$, and the left or right multiplication of a binding matrix by this mirroring matrix does not yield a binding matrix. However, the calculation $\mathbf{w} = \mathbf{B_{x^\sim}} \, \mathbf{B_{\leftrightarrow}} \, \mathbf{z}$ can be made explicit yielding:
+\eqline{[\mathbf{w}]_i = \sqrt{d'} \, \sum_{k = 1}^{k = d'} [\mathbf{x}]_{??} \; [\mathbf{z}]_{???}}
+\vthierry{CE QUI RESTE A FAIRE !}
+
+\vthierry{Remplacer w par z'''}
+
+Beyond \cite{gosmann_vector-derived_2019}, \cite{mercier_ontology_2021} has introduced a vector composition operator $\oslash$ making explicit the composition of two binding operations, namely:
+\eqline{\mathbf{B_v} = \mathbf{B_y} \, \mathbf{B_x} \Leftrightarrow \mathbf{v} \deq \mathbf{y} \oslash \mathbf{x}}
+which explicitly writes:
+\eqline{[\mathbf{v}]_i = \sqrt{d'} \, \sum_{k = 1}^{k = d'} [\mathbf{y}]_{k + (i - 1) \mbox{ div } d'} \; [\mathbf{x}]_{1 + d' \, (k - 1) + (i - 1) \mbox{ mod } d'}}
+as obtained explicitizing that $\mathbf{B_v}' = \sqrt{d'} \,\mathbf{B_y}' \, \mathbf{B_x}'$ using the notation of the first definition. The key point is that the product of two binding matrices is still a binding matrix. As a consequence this composition operator is bi-linear, thus distributive with respect to the addition, it is not commutative, but is associative, and commute with the inversion as follows:
+\eqline{(\mathbf{y} \oslash \mathbf{x})^\sim = \mathbf{x}^\sim \oslash \mathbf{y}^\sim}
+while $\mathbf{x}^\sim \oslash \mathbf{x} \simeq \mathbf{\mathbf{i}}$, all these results being easily derived considering usual matrix properties. This allows to combine two binding matrix without explicit matrix product, but also in $O\left(d^{\frac{3}{2}}\right)$ operations only.
+
+\paragraph{Using the VTB algebra in the complex case.}
+
+All developments of this section scale to to complex numbers, which could be an interesting perspective, even if not used here. This could be an interesting perspective.
+
+Stating that two resources are semantically equivalent if the unary vectors are aligned writes in the complex case\footnote{If we are in the real case $\mathbf{x}$ and $\mathbf{y} \in {\mathcal R}^d$, with $\|{\bf x}\|_2 = \|{\bf y}\|_2 = 1$, then the equality writes
+\eqline{\mathbf{x} = \mathbf{y} \Leftrightarrow \mathbf{x} \cdot \mathbf{y} = \sum_i x_i \, y_i = \cos\left(\widehat{\overrightarrow{\mathbf{x}} \, \overrightarrow{\mathbf{y}}}\right) = 1 \Leftrightarrow \widehat{\overrightarrow{\mathbf{x}} \, \overrightarrow{\mathbf{y}}} = 0 \; (\mbox{mod} \; 2 \, \Pi),}
+i.e., both unary vectors have the same direction, i.e., are aligned.
+If we are in the complex case $\mathbf{x}$ and $\mathbf{y} \in {\mathcal C}^d$, let us consider the canonical embedding in ${\mathcal R}^{2\,d}$, i.e., the real $Re$ and imaginary $Im$ parts as two real coordinates, writing $\overrightarrow{\mathbf{x}}$ the corresponding vector:
+\eqline{\mathbf{x} \deq \left(x_1, x_2, \cdots \right)^T \Leftrightarrow \overrightarrow{\mathbf{x}} \deq \left(Re(x_1), Im(x_1), Re(x_2), Im(x_2), \cdots\right)^T,}
+for which, writing $z^*$ the conjugate of a complex number $z$:
+\eqline{\begin{array}{rcl}<\mathbf{x} | \mathbf{y}> 
+&\deq& \sum_i x_i \, y_i^* \\
+&=& \sum_i 
+  (Re(x_i) \, Re(y_i) + Im(x_i) \, Im(y_i)) + I \, (Re(x_i) \, Im(y_i) - Im(x_i) \, Re(y_i)) \\
+&=&
+  \overrightarrow{\mathbf{x}} \cdot \overrightarrow{\mathbf{y}} + I \, 
+  \overrightarrow{\mathbf{x}}^* \cdot \overrightarrow{\mathbf{y}}
+\end{array}}
+so that $Re(<\mathbf{x} | \mathbf{y}>) = \overrightarrow{\mathbf{x}} \cdot \overrightarrow{\mathbf{y}}$, $\|\mathbf{x}\| = \sqrt{<\mathbf{x}|\mathbf{x}>} = \|\overrightarrow{\mathbf{x}}\|-2 = \sqrt{\overrightarrow{\mathbf{x}} \cdot \overrightarrow{\mathbf{x}}}$ and since vectors are unary: 
+\eqline{<\mathbf{x} | \mathbf{y}> = 1 \Leftrightarrow \overrightarrow{\mathbf{x}} \cdot \overrightarrow{\mathbf{y}} = 1 \Leftrightarrow \overrightarrow{\mathbf{x}} = \overrightarrow{\mathbf{y}} \Leftrightarrow \mathbf{x} = \mathbf{y},}
+
+\vthierry{Where $<\mathbf{x} | \mathbf{y}>$ stands for .. expliciter}
+
+making explicit the obvious fact that unary real or complex vectors are equal if and only if their inner product equals one, while we consider the ``angle'' of two complex vectors as the angle of their $2\,d$ real embedding, i.e.:
+\eqline{\widehat{\mathbf{x} \, \mathbf{y}} \deq \mbox{arccos}(Re(<\mathbf{x} | \mathbf{y}>)).}}: 
+\eqline{\mathbf{x} \simeq \mathbf{y} \Leftrightarrow <\mathbf{x} | \mathbf{y}> \simeq 1.
+% https://mathcs.clarku.edu/~ma130/inner2.pdf
+} while the orientation is usually defined as:
+\eqline{\widehat{\mathbf{x} \, \mathbf{y}} \deq \mbox{arccos}(Re(<\mathbf{x} | \mathbf{y}>)).}
+as detailed in the previous footnote.
+
+Provided that the space dimension $d$ is large enough, two randomly chosen different complex vectors $\mathbf{x}$ and $\mathbf{y}$, will be also\footnote{
+Considering again the canonical embedding in ${\mathcal R}^{2\,d}$ and the fact that
+\eqline{<\mathbf{x} | \mathbf{y}> = \overrightarrow{\mathbf{x}} \cdot \overrightarrow{\mathbf{y}} + I \, 
+  \overrightarrow{\mathbf{x}^*} \cdot \overrightarrow{\mathbf{y}},}
+because $\overrightarrow{\mathbf{x}}$ thus $\overrightarrow{\mathbf{x}}^*$ and $\overrightarrow{\mathbf{y}}$ are random vectors their dot product almost vanishes, thus the real and imaginary part of $<\mathbf{x} | \mathbf{y}>$ also.} approximately orthogonal in the sense that:
+\eqline{\mathbf{x} \neq \mathbf{y} \Leftrightarrow <\mathbf{x} | \mathbf{y}> \simeq 0.}
+As a consequence, the VTB matrix is almost a unitary matrix, i.e., 
+\eqline{\mathbf{B_y}^* \, \mathbf{B_y} \simeq \mathbf{I}}
+considering now the conjugate transpose.
+
+All other algebraic operations are common to both real or complex linear algebra, and this to also the case for other VSA binding operators.
+
+More than a confirmation, these derivations allows us to observe that using a complex representation would be interesting if the conjugate of a vector could be have a semantic interpretation. In that case if, say, $\mathbf{x}$ and $\mathbf{y}^*$ are similar then $<\mathbf{x} | \mathbf{y}> \simeq I$, as easily verified from the previous development. 
+

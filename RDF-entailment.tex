@@ -1,0 +1,127 @@
+
+\section{RDFS entailment rules numerical implementation} \label{RDFS-entailment-rules}
+
+Considering knowledge representation and reasoning, the capabilities of Semantic Web modeling languages, such as RDFS (Resource Description Framework Schema) and OWL (Web Ontology Language) (see, e.g. \cite{allemang_semantic_2020} for a recent didactic reference) is a powerful way of solving modeling problem and manipulate high-level data representation. It appears also to be rather accessible to educated person, as pointed out in \cite{allemang_semantic_2020}, and corresponds for a certain part to usual common sense formalization, for instance the notion of class (e.g., Garfield is a cat, that is an animal, that is a living organism). The brain is capable of such reasoning, as discussed in the paper introduction, through the data representation and processing mechanism is obviously different from what is performed in semantic web modeler and reasoners, while the brain is mainly doing induction and abduction, more than deduction. However, we would like to show here that our biologically plausible mechanism is at least able to perform RDFS\footnote{According to the \url{ https://www.w3.org/TR/rdf-schema} specification.} specification inferences.
+
+\subsection*{The RDFS modeling in a nutshell}
+
+In order to represent symbolic information the RDFS knowledge representation is based on the RDF data model, which represent knowledge  as triples, as made explicit, in Fig.~\ref{triple}. More precisely, the \emph{universe of discourse} is made of \emph{resources}, referenced by some universal resource identifier (IRI), i.e. a fixed lexical token. To structure this universe of discourse, we consider: \begin{enumerate}[label=(\roman*)]
+    \item \emph{individuals} that refer to real-world concrete or abstract objects, or 
+    \item \emph{literals} to characterize individuals using data attributes, i.e., numerical values, character strings, or any structured information such as dates
+    \item \emph{concepts} and \emph{roles} (namely \emph{classes} and \emph{properties}) that allow to structure the knowledge about individuals.
+\end{enumerate}
+
+In fact, in our context which is outside the web semantic application field, we have to point out that the RDF/RDFS framework, has to be considered with the following variants:
+\begin{itemize}
+    \item we conflate \emph{name} with both IRI and blank node, since on the one hand blank node can be eliminated,\footnote{Using a standard process related to skolemisation.} and on the other hand because we only process the information locally at this stage, thus avoiding considering all issues regarding distributed information between different sources;
+    \item we do not consider (i) semantic web specific literal (e.g., \texttt{rdf:XMLLiteral}), or (ii) utility and annotation or other human targeted  properties (e.g., \texttt{rdfs:seeAlso}) at this stage;
+    \item we will introduce both containers, i.e., ordered or unordered sequences, and collections, i.e., chained lists, later in these specifications, but in a somehow different form, adapted to the numerical representation and obvious to map on RDF representations;
+    \item we do not consider all XSD datatype, but will introduce a precise notion of numerical values and will detail how to represent structured data in our framework.
+\end{itemize}
+
+Given the capability of stating facts, the RDFS framework allows to structure the concepts, using the following construct:
+\\ - The notion of class inheritance (e.g., if Tom is a cat, and cat are animal, Tom is an animal), which allows to define a hierarchical taxonomy of classes, and structure the objects in categories, and infer all what is possible from this taxonomy.
+\\ - The notion of property inheritance (e.g., if Tom is the brother of Jerry, Tom is in the same family as Jerry, the property of being in the same family being a super-property of being the brother), which allows to structure properties, and also infer new properties by inheritance.
+\\ - The notion of domain and range (e.g, if Tom is the brother of Jerry, it also means that Tom is a boy), that allows classes for subjects and/or objects of category.
+
+The language also allows to define additional information, such as human readable elements, but we consider as a demonstrative subset to consider the main notions reviewed here.
+
+\subsection{Algorithmic and numeric entailment rule implementation} \label{RDFS-entailment-rules-1}
+
+Let us start considering the class inheritance rule example, defined in the main text which states that ``if a subject belongs to a class, and if this class is a subset of a super class, then the subject belongs to the super class'', e.g., ``if Tom is a cat, and cat are animals, then Tom is an animal''. 
+
+Given two input triples $(\$s_1 \; \$p_1 \; \$o_1 .)$ and $(\$s_2 \; \$p_2 \; \$o_2 .)$, the algorithmic rule forward application writes:
+\begin{algorithmic}
+\State \textbf{input} $(\$s_1 \; \$p_1 \; \$o_1 .)$ and $(\$s_2 \; \$p_2 \; \$o_2 .)$
+\If {$\$p_1 = \texttt{rdf:type} \And \$p_2 = \texttt{rdfs:subClassOf} \And \$o_1 = \$s_2$}
+    \State \textbf{output} $(\$s_1 \; \texttt{rdf:type} \; \$o_2 .)$
+\EndIf
+\end{algorithmic}
+
+Let us now consider a mechanism that incrementally generates all deductions given this rule and incoming triples.
+
+To generate such a closure an efficient mechanism must be able to select the pertinent triples to consider. For instance let us consider that triples are indexed in an associative table by property and subject, i.e., that for two constant values $c_i$, $c_j$:
+\begin{algorithmic}
+  \State \textbf{select} $(\$s_i \; \$p_i \; \$o_i .), \$p_i = c_i \And \$s_i = c_j$
+\end{algorithmic}
+can be enumerated directly without scanning all triples but the one to be selected, and that we have the similar efficient associative indexing by property and object. This will allow us to incrementally efficiently calculates the closure as follows, given a ``closed'' set of triples $\{(\$s_i \; \$p_i \; \$o_i .) \cdots \}$ with all possible triplets generated and a new triple $(\$s_0 \; \$p_0 \; \$o_0 .)$ to be added:
+\begin{algorithmic}
+\State \textbf{input} A new triple $(\$s_0 \; \$p_0 \; \$o_0 .)$ and a closed set of triples $\{(\$s_i \; \$p_i \; \$o_i .) \cdots \}$.
+\State \textbf{let} $\{(\$s_0 \; \$p_0 \; \$o_0 .)\}$ an ``open'' triple set, initialized with the new triple inside.
+\Repeat
+  \State \textbf{pull} a triple $(\$s_0 \; \$p_0 \; \$o_0 .)$ from the open triple set.
+  \If{$\$p_0 = \texttt{rdf:type}$}
+    \ForAll{$(\$s_i \; \$p_i \; \$o_i .), \$p_i = \texttt{rdfs:subClassOf} \And \$s_i = \$o_0,$ in the closed triple set}
+      \State \textbf{add} $(\$s_0 \; \texttt{rdf:type} \; \$o_i .)$ to the open triple set.
+    \EndFor
+  \ElsIf{$\$p_0 = \texttt{rdf:subClassOf}$}
+    \ForAll{$(\$s_i \; \$p_i \; \$o_i .), \$p_i = \texttt{rdf:type} \And \$o_i = \$s_0,$ in the closed triple set}
+      \State \textbf{add} $(\$s_i \; \texttt{rdf:type} \; \$o_0 .)$ to the open triple set.
+    \EndFor
+  \EndIf
+  \State \textbf{add} the triple $(\$s_0 \; \$p_0 \; \$o_0 .)$ to the closed triple set.
+\Until{the open triple set is empty}
+\end{algorithmic}
+
+\subsection{Generality of numeric entailment rule implementation} \label{RDFS-entailment-rules-2}
+
+The RDFS entailment, i.e., all what can be logically deduced from the input information, defines which elements are well-formed and which entailment relations allows to deduced all derived information. In the case of RDFS it is given in Table~\ref{rdfs-entailment-rules}. It appears that each rule can be implemented with the same mechanism, for instance:
+
+- The \textit{rdfs9}  class inheritance entailment rule:
+\eqline{(\$s \; \texttt{rdf:type} \; \$c_1 .) \mbox{ and } (\$c_1 \; \texttt{rdfs:subClassOf} \; \$c_2 .) \Rightarrow (\$s \; \texttt{rdf:type} \; \$c_2 .)}
+that states that if any subject $\$s$ belongs to the class $\$c_1$ and this class $\$c_1$ is a subclass of $\$c_2$, then $\$s$ also belongs to the class $\$c_2$, as taken as major example here.
+
+- The \textit{rdfs2} rule allowing to infer the subject domain class:
+\eqline{(\$s_1 \; \$p_1 \; \$o_1 .) \mbox{ and } (\$p_1 \; \texttt{rdfs:domain} \; \$o_2 .) \Rightarrow (\$s_1 \; \texttt{rdf:type} \; \$o_2 .)}
+writes: 
+\eqline{\$p_0 = \tau \, \textbf{rdf:type}, \tau \deq (\textbf{\$p}_1 \cdot \textbf{\$s}_2) \And (\textbf{\$p}_2 \cdot \texttt{\bf rdfs:domain}).}
+and we need an associative mechanism on the subject and predicate and an associative mechanism on the predicate, i.e.:
+\begin{algorithmic}
+  \State \textbf{select} $(\$s_i \; \$p_i \; \$o_i .), \$p_i = c_i \And \$s_i = c_j$
+  \State \textbf{select} $(\$s_i \; \$p_i \; \$o_i .), \$p_i = c_i$
+\end{algorithmic}
+to incrementally introduce the first or second premise respectively and enumerate all related triples.
+
+- The \textit{rdfs3} rule allowing to infer the object range class:
+\eqline{(\$s_1 \; \$p_1 \; \$o_1 .) \mbox{ and } (\$p_1 \; \texttt{rdfs:range} \; \$o_2 .) \Rightarrow (\$o_1 \; \texttt{rdf:type} \; \$o_2 .)}
+writes: 
+\eqline{\$p_0 = \tau \, \textbf{rdf:type}, \tau \deq (\textbf{\$p}_1 \cdot \textbf{\$s}_2) \And (\textbf{\$p}_2 \cdot \texttt{\bf rdfs:range}).}
+and we need the same associative mechanisms as before.
+\\- The \textit{rdfs7} rule allowing to infer sub-property inheritance:
+\eqline{(\$s_1 \; \$p_1 \; \$o_1 .) \mbox{ and } (\$p_1 \; \texttt{rdfs:subPropertyOf} \; \$o_2 .) \Rightarrow (\$s_1 \; \$o_2 \; \$o_1 .)}
+writes: 
+\eqline{\$p_0 = \tau \, \textbf{\$o}_2 , \tau \deq (\textbf{\$p}_1 \cdot \textbf{\$s}_2) \And (\textbf{\$p}_2 \cdot \texttt{\bf rdfs:subPropertyOf}).}
+and we need the same associative mechanisms as before.
+
+This easily generalizes to all rules in table~\ref{rdfs-entailment-rules}.
+
+\begin{table}[h]
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}lllll@{}}
+\toprule
+\textbf{Rule set}                            & \textbf{Rule Name}          & \textbf{If E contains:}                                                                                                                    & \textbf{then add:}                                                                                                                               &  \\ \midrule
+\multirow{2}{*}{simple entailment rules}     & \textit{se1}                         & \texttt{uuu aaa xxx .}                                                                                                                              & \begin{tabular}[c]{@{}l@{}}\texttt{uuu aaa \_:nnn .}\\  where \texttt{\_:nnn} identifies a blank node \\allocated to xxx by rule \textit{se1} or \textit{se2}.\end{tabular}            &  \\
+                                             & \textit{se2}                         & \texttt{uuu aaa xxx .}                                                                                                                              & \begin{tabular}[c]{@{}l@{}}\texttt{\_:nnn aaa xxx .}\\  where \texttt{\_:nnn} identifies a blank node \\allocated to uuu by rule \textit{se1} or \textit{se2}.\end{tabular}            &  \\
+special case of rule \textit{se1} for literals        & lg (literal generalization) & \texttt{uuu aaa lll .}                                                                                                                              & \begin{tabular}[c]{@{}l@{}}\texttt{uuu aaa \_:nnn .}\\  where \texttt{\_:nnn} identifies a blank node \\allocated to the literal \texttt{lll} by this rule.\end{tabular}      &  \\
+special case of rule \textit{se1} for literals (RDFS) & \textit{gl} (literal instanciation)  & \begin{tabular}[c]{@{}l@{}}\texttt{uuu aaa \_:nnn  .}\\  where \texttt{\_:nnn} identifies a blank node \\allocated to the literal \texttt{lll} by rule \texttt{lg}.\end{tabular} & \texttt{uuu aaa lll .}                                                                                                                                    &  \\
+\multirow{2}{*}{RDF entailment rules}        & \textit{rdf1}                        & \texttt{uuu aaa yyy .}                                                                                                                              & \texttt{aaa rdf:type rdf:Property .}                                                                                                                      &  \\
+                                             & \textit{rdf2}                        & \begin{tabular}[c]{@{}l@{}}\texttt{uuu aaa lll .}\\  where \texttt{lll} is a well-typed XML literal .\end{tabular}                                           & \begin{tabular}[c]{@{}l@{}}\texttt{\_:nnn rdf:type rdf:XMLLiteral .}\\  where \texttt{\_:nnn} identifies a blank node \\allocated to \texttt{lll} by rule \textit{lg}.\end{tabular}    &  \\
+\multirow{14}{*}{RDFS entailment rules}      & \textit{rdfs1}                       & \begin{tabular}[c]{@{}l@{}}\texttt{uuu aaa lll .}\\  where \texttt{lll} is a plain literal (with or \\without a language tag).\end{tabular}                     & \begin{tabular}[c]{@{}l@{}}\texttt{\_:nnn rdf:type rdfs:Literal .}\\  where \texttt{\_:nnn} identifies a blank node \\allocated to \texttt{lll} by rule \textit{lg}.\end{tabular} &  \\
+                                             & \textit{rdfs2}                       & \begin{tabular}[c]{@{}l@{}}\texttt{aaa rdfs:domain xxx .}\\  \texttt{uuu aaa yyy .}\end{tabular}                                                             & \texttt{uuu rdf:type xxx .}                                                                                                                               &  \\
+                                             & \textit{rdfs3}                       & \begin{tabular}[c]{@{}l@{}}\texttt{aaa rdfs:range xxx .}\\  \texttt{uuu aaa vvv .}\end{tabular}                                                              & \texttt{vvv rdf:type xxx .}                                                                                                                               &  \\
+                                             & \textit{rdfs4a}                      & \texttt{uuu aaa xxx .}                                                                                                                              & \texttt{uuu rdf:type rdfs:Resource .}                                                                                                                     &  \\
+                                             & \textit{rdfs4b}                      & \texttt{uuu aaa vvv .}                                                                                                                               & \texttt{vvv rdf:type rdfs:Resource .}                                                                                                                     &  \\
+                                             & \textit{rdfs5}                       & \begin{tabular}[c]{@{}l@{}}\texttt{uuu rdfs:subPropertyOf vvv .}\\  \texttt{vvv rdfs:subPropertyOf xxx .}\end{tabular}                                       & \texttt{uuu rdfs:subPropertyOf xxx .}                                                                                                                     &  \\
+                                             & \textit{rdfs6}                       & \texttt{uuu rdf:type rdf:Property .}                                                                                                                & \texttt{uuu rdfs:subPropertyOf uuu .}                                                                                                                     &  \\
+                                             & \textit{rdfs7}                       & \begin{tabular}[c]{@{}l@{}}\texttt{aaa rdfs:subPropertyOf bbb .}\\  \texttt{uuu aaa yyy .}\end{tabular}                                                      & \texttt{uuu bbb yyy .}                                                                                                                                    &  \\
+                                             & \textit{rdfs8}                       & \texttt{uuu rdf:type rdfs:Class .}                                                                                                                  & \texttt{uuu rdfs:subClassOf rdfs:Resource .}                                                                                                              &  \\
+                                             & \textit{rdfs9}                       & \begin{tabular}[c]{@{}l@{}}\texttt{uuu rdfs:subClassOf xxx .}\\  \texttt{vvv rdf:type uuu .}\end{tabular}                                                    & \texttt{vvv rdf:type xxx .}                                                                                                                               &  \\
+                                             & \textit{rdfs10}                      & \texttt{uuu rdf:type rdfs:Class .}                                                                                                                  & \texttt{uuu rdfs:subClassOf uuu .}                                                                                                                        &  \\
+                                             & \textit{rdfs11}                      & \begin{tabular}[c]{@{}l@{}}\texttt{uuu rdfs:subClassOf vvv .}\\  \texttt{vvv rdfs:subClassOf xxx .}\end{tabular}                                             & \texttt{uuu rdfs:subClassOf xxx .}                                                                                                                        &  \\
+                                             & \textit{rdfs12}                      & \texttt{uuu rdf:type rdfs:ContainerMembershipProperty .}                                                                                            & \texttt{uuu rdfs:subPropertyOf rdfs:member .}                                                                                                             &  \\
+                                             & \textit{rdfs13}                      & \texttt{uuu rdf:type rdfs:Datatype .}                                                                                                               & \texttt{uuu rdfs:subClassOf rdfs:Literal .}                                                                                                               &  \\ \cmidrule(l){1-5} 
+\end{tabular}
+}
+\caption{The RDF/RDFS entailment rules, reproduced from \href{https://www.w3.org/TR/rdf11-mt}{https://www.w3.org/TR/rdf11-mt}.}
+\label{rdfs-entailment-rules}
+\end{table}
